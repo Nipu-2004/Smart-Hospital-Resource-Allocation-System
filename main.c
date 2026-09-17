@@ -7,6 +7,9 @@
 #define NUM_SPECIALTIES 4
 #define NUM_WARDS       4
 #define MAX_BEDS        20
+#define MAX_PATIENTS    100
+#define NAME_LEN        50
+#define ID_LEN          15
 
 
 
@@ -39,6 +42,20 @@ int bedOccupancy[NUM_WARDS][MAX_BEDS];
 
 /*Specialty Queue Counters*/
 int queueCount[NUM_SPECIALTIES];
+
+/*Patient Parallel Arrays*/
+char   patientID[MAX_PATIENTS][ID_LEN];
+char   patientName[MAX_PATIENTS][NAME_LEN];
+int    patientAge[MAX_PATIENTS];
+int    urgencyLevel[MAX_PATIENTS];
+int    specialtyIndex[MAX_PATIENTS];
+int    isAdmitted[MAX_PATIENTS];
+int    wardIndex[MAX_PATIENTS];
+int    bedNumber[MAX_PATIENTS];
+int    daysAdmitted[MAX_PATIENTS];
+
+int patientCount = 0;
+int nextPatientNumber = 1001;
 
 
 
