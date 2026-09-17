@@ -19,6 +19,7 @@ void clearInputBuffer(void);
 int  readIntInRange(const char *prompt, int lo, int hi);
 int findSpecialtyIndexByID(int id);
 int findWardIndexByID(int id);
+void registerPatient(void);
 
 
 
@@ -121,6 +122,34 @@ int findWardIndexByID(int id) {
     return -1;
 }
 
+void registerPatient(void) {
+    if (patientCount >= MAX_PATIENTS) {
+        printf("\nPatient records are full (max %d). Cannot register more.\n", MAX_PATIENTS);
+        return;
+    }
+    int p = patientCount;
+
+    printf("\n------------- New Patient Registration -------------\n");
+    printf("Patient Name: ");
+    fgets(patientName[p], NAME_LEN, stdin);
+    patientName[p][strcspn(patientName[p], "\n")] = '\0';
+
+    patientAge[p] = readIntInRange("Patient Age: ", 0, 120);
+    urgencyLevel[p] = readIntInRange("Triage Level (1=Normal, 2=Urgent, 3=Critical): ", 1, 3);
+
+    printf("\nAvailable Specialties:\n");
+    for (int i = 0; i < NUM_SPECIALTIES; i++) {
+        printf("  %d. %-25s (LKR %.2f)\n", specialtyID[i], specialtyName[i], baseFee[i]);
+    }
+    int specId = readIntInRange("Select Specialty ID: ", 1, NUM_SPECIALTIES);
+    specialtyIndex[p] = findSpecialtyIndexByID(specId);
+
+    snprintf(patientID[p], ID_LEN, "PAT-%d", nextPatientNumber++);
+    patientCount++;
+
+    printf("Registered patient %s successfully.\n", patientID[p]);
+}
+
 int main(void) {
     initializeSystem();
     int choice;
@@ -132,7 +161,7 @@ int main(void) {
         choice = readIntInRange("Enter your choice (1-5): ", 1, 5);
 
         switch (choice) {
-            case 1: printf("Register patient - coming soon\n"); break;
+            case 1: registerPatient(); break;
             case 2: printf("Bed occupancy - coming soon\n"); break;
             case 3: printf("Priority order - coming soon\n"); break;
             case 4: printf("Reports - coming soon\n"); break;
