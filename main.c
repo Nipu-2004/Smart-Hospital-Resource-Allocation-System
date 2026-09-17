@@ -20,6 +20,7 @@ int  readIntInRange(const char *prompt, int lo, int hi);
 int findSpecialtyIndexByID(int id);
 int findWardIndexByID(int id);
 void registerPatient(void);
+double calculateWaitTime(int specIdx);
 
 
 
@@ -56,6 +57,7 @@ int    isAdmitted[MAX_PATIENTS];
 int    wardIndex[MAX_PATIENTS];
 int    bedNumber[MAX_PATIENTS];
 int    daysAdmitted[MAX_PATIENTS];
+double waitTimeArr[MAX_PATIENTS];
 
 int patientCount = 0;
 int nextPatientNumber = 1001;
@@ -122,6 +124,12 @@ int findWardIndexByID(int id) {
     return -1;
 }
 
+
+
+double calculateWaitTime(int specIdx) {
+    return queueCount[specIdx] * (double)consultTime[specIdx];
+}
+
 void registerPatient(void) {
     if (patientCount >= MAX_PATIENTS) {
         printf("\nPatient records are full (max %d). Cannot register more.\n", MAX_PATIENTS);
@@ -143,6 +151,9 @@ void registerPatient(void) {
     }
     int specId = readIntInRange("Select Specialty ID: ", 1, NUM_SPECIALTIES);
     specialtyIndex[p] = findSpecialtyIndexByID(specId);
+
+    waitTimeArr[p] = calculateWaitTime(specialtyIndex[p]);
+    queueCount[specialtyIndex[p]]++;
 
     snprintf(patientID[p], ID_LEN, "PAT-%d", nextPatientNumber++);
     patientCount++;
