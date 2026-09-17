@@ -22,6 +22,9 @@ int findWardIndexByID(int id);
 void registerPatient(void);
 double calculateWaitTime(int specIdx);
 int assignBed(int wardIdx);
+double calculateSurcharge(int specIdx, int urgency);
+double calculateWardCost(int wardIdx, int days);
+double calculateDiscount(int age, double grossTotal);
 
 
 
@@ -59,6 +62,12 @@ int    wardIndex[MAX_PATIENTS];
 int    bedNumber[MAX_PATIENTS];
 int    daysAdmitted[MAX_PATIENTS];
 double waitTimeArr[MAX_PATIENTS];
+double baseFeeArr[MAX_PATIENTS];
+double surchargeArr[MAX_PATIENTS];
+double wardCostArr[MAX_PATIENTS];
+double grossTotalArr[MAX_PATIENTS];
+double discountArr[MAX_PATIENTS];
+double finalAmountArr[MAX_PATIENTS];
 
 int patientCount = 0;
 int nextPatientNumber = 1001;
@@ -141,6 +150,28 @@ int assignBed(int wardIdx) {
     return -1;
 }
 
+double calculateSurcharge(int specIdx, int urgency) {
+    double base = baseFee[specIdx];
+    switch (urgency) {
+        case 1: return 0.0;
+        case 2: return base * 0.20;
+        case 3: return base * 0.50;
+        default: return 0.0;
+    }
+}
+
+double calculateWardCost(int wardIdx, int days) {
+    if (wardIdx < 0 || days <= 0) return 0.0;
+    return days * dailyBedRate[wardIdx];
+}
+
+double calculateDiscount(int age, double grossTotal) {
+    if (age < 5 || age > 65) {
+        return grossTotal * 0.15;
+    }
+    return 0.0;
+}
+
 void registerPatient(void) {
     if (patientCount >= MAX_PATIENTS) {
         printf("\nPatient records are full (max %d). Cannot register more.\n", MAX_PATIENTS);
@@ -193,6 +224,13 @@ void registerPatient(void) {
     wardIndex[p] = wIdx;
     bedNumber[p] = bed;
     daysAdmitted[p] = days;
+
+    baseFeeArr[p]    = baseFee[specialtyIndex[p]];
+    surchargeArr[p]  = calculateSurcharge(specialtyIndex[p], urgencyLevel[p]);
+    wardCostArr[p]   = calculateWardCost(wIdx, days);
+    grossTotalArr[p] = baseFeeArr[p] + surchargeArr[p] + wardCostArr[p];
+    discountArr[p]   = calculateDiscount(patientAge[p], grossTotalArr[p]);
+    finalAmountArr[p]= grossTotalArr[p] - discountArr[p];
 
     snprintf(patientID[p], ID_LEN, "PAT-%d", nextPatientNumber++);
     patientCount++;
