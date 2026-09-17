@@ -17,6 +17,8 @@ void initializeSystem(void);
 void displayMainMenu(void);
 void clearInputBuffer(void);
 int  readIntInRange(const char *prompt, int lo, int hi);
+int findSpecialtyIndexByID(int id);
+int findWardIndexByID(int id);
 
 
 
@@ -103,6 +105,20 @@ int readIntInRange(const char *prompt, int lo, int hi) {
         }
         printf("  -> Invalid input. Please enter a value between %d and %d.\n", lo, hi);
     }
+}
+
+int findSpecialtyIndexByID(int id) {
+    for (int i = 0; i < NUM_SPECIALTIES; i++) {
+        if (specialtyID[i] == id) return i;
+    }
+    return -1;
+}
+
+int findWardIndexByID(int id) {
+    for (int i = 0; i < NUM_WARDS; i++) {
+        if (wardID[i] == id) return i;
+    }
+    return -1;
 }
 
 int main(void) {
