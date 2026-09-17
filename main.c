@@ -21,6 +21,7 @@ int findSpecialtyIndexByID(int id);
 int findWardIndexByID(int id);
 void registerPatient(void);
 double calculateWaitTime(int specIdx);
+int assignBed(int wardIdx);
 
 
 
@@ -130,6 +131,16 @@ double calculateWaitTime(int specIdx) {
     return queueCount[specIdx] * (double)consultTime[specIdx];
 }
 
+int assignBed(int wardIdx) {
+    for (int b = 0; b < bedCapacity[wardIdx]; b++) {
+        if (bedOccupancy[wardIdx][b] == 0) {
+            bedOccupancy[wardIdx][b] = 1;
+            return b + 1;
+        }
+    }
+    return -1;
+}
+
 void registerPatient(void) {
     if (patientCount >= MAX_PATIENTS) {
         printf("\nPatient records are full (max %d). Cannot register more.\n", MAX_PATIENTS);
@@ -154,6 +165,34 @@ void registerPatient(void) {
 
     waitTimeArr[p] = calculateWaitTime(specialtyIndex[p]);
     queueCount[specialtyIndex[p]]++;
+
+    int admitted = readIntInRange("Admit to Ward? (1=Yes, 0=No): ", 0, 1);
+    isAdmitted[p] = admitted;
+
+    int wIdx = -1, bed = -1, days = 0;
+
+    if (admitted == 1) {
+        printf("\nAvailable Wards:\n");
+        for (int i = 0; i < NUM_WARDS; i++) {
+            printf("  %d. %-25s (LKR %.2f/day, Capacity %d)\n",
+                   wardID[i], wardName[i], dailyBedRate[i], bedCapacity[i]);
+        }
+        int wardIdInput = readIntInRange("Select Ward ID: ", 1, NUM_WARDS);
+        wIdx = findWardIndexByID(wardIdInput);
+
+        bed = assignBed(wIdx);
+        if (bed == -1) {
+            printf("\n*** Ward '%s' is FULL. Patient will be treated as Outpatient (OPD). ***\n", wardName[wIdx]);
+            isAdmitted[p] = 0;
+            wIdx = -1;
+            days = 0;
+        } else {
+            days = readIntInRange("Days Admitted: ", 1, 365);
+        }
+    }
+    wardIndex[p] = wIdx;
+    bedNumber[p] = bed;
+    daysAdmitted[p] = days;
 
     snprintf(patientID[p], ID_LEN, "PAT-%d", nextPatientNumber++);
     patientCount++;
