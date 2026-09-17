@@ -11,6 +11,7 @@
 
 
 void initializeSystem(void);
+void displayMainMenu(void);
 
 
 
@@ -23,7 +24,7 @@ const double baseFee[NUM_SPECIALTIES]      = {1500.00, 2500.00, 4500.00, 5000.00
 const int    consultTime[NUM_SPECIALTIES]  = {15, 20, 30, 30};
 const int    dailyCap[NUM_SPECIALTIES]     = {30, 20, 12, 10};
 
-/*Lookup Data: Hospital Wards*/
+/*Hospital Wards*/
 const int    wardID[NUM_WARDS]        = {1, 2, 3, 4};
 const char   wardName[NUM_WARDS][30]  = {
     "General Ward", "Paediatric Ward", "Surgical Ward", "ICU (Intensive Care Unit)"
@@ -34,7 +35,7 @@ const int    bedCapacity[NUM_WARDS]   = {20, 10, 10, 5};
 /*Bed Occupancy Matrix*/
 int bedOccupancy[NUM_WARDS][MAX_BEDS];
 
-/* Specialty Queue Counters*/
+/*Specialty Queue Counters*/
 int queueCount[NUM_SPECIALTIES];
 
 
@@ -50,8 +51,25 @@ void initializeSystem(void) {
     }
 }
 
+void displayMainMenu(void) {
+    printf("\n============================================================\n");
+    printf("        SMART HOSPITAL & RESOURCE ALLOCATION SYSTEM\n");
+    printf("============================================================\n");
+    printf(" 1. Register New Patient\n");
+    printf(" 2. View Bed Occupancy Matrix\n");
+    printf(" 3. View Patients in Priority (Triage) Order\n");
+    printf(" 4. Generate Performance Reports\n");
+    printf(" 5. Save & Exit\n");
+    printf("------------------------------------------------------------\n");
+}
+
 int main(void) {
     initializeSystem();
+    int running = 1;
     printf("Welcome to the Smart Hospital & Resource Allocation System\n");
+    while (running) {
+        displayMainMenu();
+        running = 0;
+    }
     return 0;
 }
