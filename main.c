@@ -12,6 +12,8 @@
 
 void initializeSystem(void);
 void displayMainMenu(void);
+void clearInputBuffer(void);
+int  readIntInRange(const char *prompt, int lo, int hi);
 
 
 
@@ -61,6 +63,29 @@ void displayMainMenu(void) {
     printf(" 4. Generate Performance Reports\n");
     printf(" 5. Save & Exit\n");
     printf("------------------------------------------------------------\n");
+}
+
+
+
+void clearInputBuffer(void) {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF) { }
+}
+
+int readIntInRange(const char *prompt, int lo, int hi) {
+    int value;
+    while (1) {
+        printf("%s", prompt);
+        if (scanf("%d", &value) == 1) {
+            clearInputBuffer();
+            if (value >= lo && value <= hi) {
+                return value;
+            }
+        } else {
+            clearInputBuffer();
+        }
+        printf("  -> Invalid input. Please enter a value between %d and %d.\n", lo, hi);
+    }
 }
 
 int main(void) {
