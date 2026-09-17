@@ -25,6 +25,7 @@ int assignBed(int wardIdx);
 double calculateSurcharge(int specIdx, int urgency);
 double calculateWardCost(int wardIdx, int days);
 double calculateDiscount(int age, double grossTotal);
+void printCurrency(double amount);
 
 
 
@@ -172,6 +173,26 @@ double calculateDiscount(int age, double grossTotal) {
     return 0.0;
 }
 
+void printCurrency(double amount) {
+    if (amount < 0) {
+        printf("-");
+        amount = -amount;
+    }
+    char buf[40];
+    snprintf(buf, sizeof(buf), "%.2f", amount);
+    char *dot = strchr(buf, '.');
+    int intLen = (int)(dot - buf);
+
+    for (int i = 0; i < intLen; i++) {
+        putchar(buf[i]);
+        int remaining = intLen - i - 1;
+        if (remaining > 0 && remaining % 3 == 0) {
+            putchar(',');
+        }
+    }
+    printf("%s", dot);
+}
+
 void registerPatient(void) {
     if (patientCount >= MAX_PATIENTS) {
         printf("\nPatient records are full (max %d). Cannot register more.\n", MAX_PATIENTS);
@@ -261,3 +282,4 @@ int main(void) {
     }
     return 0;
 }
+
