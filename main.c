@@ -90,11 +90,24 @@ int readIntInRange(const char *prompt, int lo, int hi) {
 
 int main(void) {
     initializeSystem();
+    int choice;
     int running = 1;
     printf("Welcome to the Smart Hospital & Resource Allocation System\n");
+
     while (running) {
         displayMainMenu();
-        running = 0;
+        choice = readIntInRange("Enter your choice (1-5): ", 1, 5);
+
+        switch (choice) {
+            case 1: printf("Register patient - coming soon\n"); break;
+            case 2: printf("Bed occupancy - coming soon\n"); break;
+            case 3: printf("Priority order - coming soon\n"); break;
+            case 4: printf("Reports - coming soon\n"); break;
+            case 5:
+                printf("\nGoodbye!\n");
+                running = 0;
+                break;
+        }
     }
     return 0;
 }
