@@ -27,6 +27,7 @@ double calculateWardCost(int wardIdx, int days);
 double calculateDiscount(int age, double grossTotal);
 void printCurrency(double amount);
 void displayBill(int p);
+void displayBedOccupancy(void);
 
 
 
@@ -263,6 +264,21 @@ void displayBill(int p) {
     printf("====================================================\n");
 }
 
+void displayBedOccupancy(void) {
+    printf("\n=================== BED OCCUPANCY MATRIX ===================\n");
+    for (int w = 0; w < NUM_WARDS; w++) {
+        int occupied = 0;
+        printf("\n%s (Capacity %d):\n  ", wardName[w], bedCapacity[w]);
+        for (int b = 0; b < bedCapacity[w]; b++) {
+            printf("[Bed %02d:%s] ", b + 1, bedOccupancy[w][b] ? "OCC" : "AVL");
+            if (bedOccupancy[w][b]) occupied++;
+        }
+        printf("\n  -> %d / %d beds occupied (%.1f%%)\n",
+               occupied, bedCapacity[w], (occupied * 100.0) / bedCapacity[w]);
+    }
+    printf("==============================================================\n");
+}
+
 void registerPatient(void) {
     if (patientCount >= MAX_PATIENTS) {
         printf("\nPatient records are full (max %d). Cannot register more.\n", MAX_PATIENTS);
@@ -343,7 +359,7 @@ int main(void) {
 
         switch (choice) {
             case 1: registerPatient(); break;
-            case 2: printf("Bed occupancy - coming soon\n"); break;
+            case 2: displayBedOccupancy(); break;
             case 3: printf("Priority order - coming soon\n"); break;
             case 4: printf("Reports - coming soon\n"); break;
             case 5:
