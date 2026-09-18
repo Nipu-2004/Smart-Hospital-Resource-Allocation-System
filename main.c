@@ -29,6 +29,7 @@ void printCurrency(double amount);
 void displayBill(int p);
 void displayBedOccupancy(void);
 void displayAllPatientsPriorityOrder(void);
+void generateReports(void);
 
 
 
@@ -323,6 +324,53 @@ void displayAllPatientsPriorityOrder(void) {
     printf("==============================================================\n");
 }
 
+
+
+void generateReports(void) {
+    if (patientCount == 0) {
+        printf("\nNo patients registered yet. Nothing to report.\n");
+        return;
+    }
+    int normalCount = 0, urgentCount = 0, criticalCount = 0;
+    double totalRevenue = 0.0, totalDiscount = 0.0;
+    int topPatient = 0;
+
+    for (int p = 0; p < patientCount; p++) {
+        switch (urgencyLevel[p]) {
+            case 1: normalCount++; break;
+            case 2: urgentCount++; break;
+            case 3: criticalCount++; break;
+        }
+        totalRevenue  += finalAmountArr[p];
+        totalDiscount += discountArr[p];
+        if (finalAmountArr[p] > finalAmountArr[topPatient]) topPatient = p;
+    }
+
+    printf("\n=================== PERFORMANCE REPORT ===================\n");
+    printf("Total Patients Registered : %d\n", patientCount);
+    printf("  - Normal   (Level 1)    : %d\n", normalCount);
+    printf("  - Urgent   (Level 2)    : %d\n", urgentCount);
+    printf("  - Critical (Level 3)    : %d\n", criticalCount);
+
+    printf("\nTotal Revenue Earned      : LKR ");
+    printCurrency(totalRevenue);
+    printf("\nTotal Discounts Granted   : LKR ");
+    printCurrency(totalDiscount);
+    printf("\n\nBed Occupancy Per Ward:\n");
+
+    for (int w = 0; w < NUM_WARDS; w++) {
+        int occupied = 0;
+        for (int b = 0; b < bedCapacity[w]; b++) if (bedOccupancy[w][b]) occupied++;
+        printf("  - %-25s : %d/%d beds (%.1f%%)\n",
+               wardName[w], occupied, bedCapacity[w], (occupied * 100.0) / bedCapacity[w]);
+    }
+
+    printf("\nHighest-Paying Patient    : %s (%s) - LKR ",
+           patientName[topPatient], patientID[topPatient]);
+    printCurrency(finalAmountArr[topPatient]);
+    printf("\n============================================================\n");
+}
+
 void registerPatient(void) {
     if (patientCount >= MAX_PATIENTS) {
         printf("\nPatient records are full (max %d). Cannot register more.\n", MAX_PATIENTS);
@@ -405,7 +453,7 @@ int main(void) {
             case 1: registerPatient(); break;
             case 2: displayBedOccupancy(); break;
             case 3: displayAllPatientsPriorityOrder(); break;
-            case 4: printf("Reports - coming soon\n"); break;
+            case 4: generateReports(); break;
             case 5:
                 printf("\nGoodbye!\n");
                 running = 0;
