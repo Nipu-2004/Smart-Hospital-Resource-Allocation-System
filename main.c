@@ -28,6 +28,7 @@ double calculateDiscount(int age, double grossTotal);
 void printCurrency(double amount);
 void displayBill(int p);
 void displayBedOccupancy(void);
+void displayAllPatientsPriorityOrder(void);
 
 
 
@@ -279,6 +280,49 @@ void displayBedOccupancy(void) {
     printf("==============================================================\n");
 }
 
+
+
+static int comesBefore(int a, int b) {
+    if (urgencyLevel[a] != urgencyLevel[b]) {
+        return urgencyLevel[a] > urgencyLevel[b];
+    }
+    return a < b;
+}
+
+void displayAllPatientsPriorityOrder(void) {
+    if (patientCount == 0) {
+        printf("\nNo patients registered yet.\n");
+        return;
+    }
+    int order[MAX_PATIENTS];
+    for (int i = 0; i < patientCount; i++) order[i] = i;
+
+    for (int i = 0; i < patientCount - 1; i++) {
+        int best = i;
+        for (int j = i + 1; j < patientCount; j++) {
+            if (comesBefore(order[j], order[best])) best = j;
+        }
+        if (best != i) {
+            int temp = order[i];
+            order[i] = order[best];
+            order[best] = temp;
+        }
+    }
+
+    printf("\n================ PATIENTS IN PRIORITY ORDER ================\n");
+    printf("%-10s %-22s %-6s %-10s %-20s\n", "ID", "Name", "Age", "Urgency", "Specialty");
+    printf("--------------------------------------------------------------\n");
+    for (int i = 0; i < patientCount; i++) {
+        int p = order[i];
+        const char *level = (urgencyLevel[p] == 3) ? "Critical" :
+                             (urgencyLevel[p] == 2) ? "Urgent"   : "Normal";
+        printf("%-10s %-22s %-6d %-10s %-20s\n",
+               patientID[p], patientName[p], patientAge[p], level,
+               specialtyName[specialtyIndex[p]]);
+    }
+    printf("==============================================================\n");
+}
+
 void registerPatient(void) {
     if (patientCount >= MAX_PATIENTS) {
         printf("\nPatient records are full (max %d). Cannot register more.\n", MAX_PATIENTS);
@@ -360,7 +404,7 @@ int main(void) {
         switch (choice) {
             case 1: registerPatient(); break;
             case 2: displayBedOccupancy(); break;
-            case 3: printf("Priority order - coming soon\n"); break;
+            case 3: displayAllPatientsPriorityOrder(); break;
             case 4: printf("Reports - coming soon\n"); break;
             case 5:
                 printf("\nGoodbye!\n");
