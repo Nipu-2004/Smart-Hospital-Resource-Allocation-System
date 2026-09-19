@@ -30,6 +30,9 @@ void displayBill(int p);
 void displayBedOccupancy(void);
 void displayAllPatientsPriorityOrder(void);
 void generateReports(void);
+void saveBedStatus(void);
+void loadBedStatus(void);
+void appendPatientRecord(int p);
 
 
 
@@ -88,6 +91,7 @@ void initializeSystem(void) {
     for (int s = 0; s < NUM_SPECIALTIES; s++) {
         queueCount[s] = 0;
     }
+    loadBedStatus();
 }
 
 void displayMainMenu(void) {
@@ -371,6 +375,50 @@ void generateReports(void) {
     printf("\n============================================================\n");
 }
 
+
+
+void saveBedStatus(void) {
+    FILE *fp = fopen("beds_status.txt", "w");
+    if (fp == NULL) {
+        printf("Warning: could not save beds_status.txt\n");
+        return;
+    }
+    for (int w = 0; w < NUM_WARDS; w++) {
+        for (int b = 0; b < MAX_BEDS; b++) {
+            fprintf(fp, "%d ", bedOccupancy[w][b]);
+        }
+        fprintf(fp, "\n");
+    }
+    fclose(fp);
+}
+
+void loadBedStatus(void) {
+    FILE *fp = fopen("beds_status.txt", "r");
+    if (fp == NULL) return;
+    for (int w = 0; w < NUM_WARDS; w++) {
+        for (int b = 0; b < MAX_BEDS; b++) {
+            if (fscanf(fp, "%d", &bedOccupancy[w][b]) != 1) {
+                bedOccupancy[w][b] = 0;
+            }
+        }
+    }
+    fclose(fp);
+}
+
+void appendPatientRecord(int p) {
+    FILE *fp = fopen("patient_records.txt", "a");
+    if (fp == NULL) {
+        printf("Warning: could not write to patient_records.txt\n");
+        return;
+    }
+    fprintf(fp,
+        "%s | %s | Age:%d | Urgency:%d | Specialty:%s | Admitted:%s | Ward:%s | Days:%d | Final:%.2f\n",
+        patientID[p], patientName[p], patientAge[p], urgencyLevel[p],
+        specialtyName[specialtyIndex[p]], isAdmitted[p] ? "Yes" : "No",
+        isAdmitted[p] ? wardName[wardIndex[p]] : "N/A", daysAdmitted[p], finalAmountArr[p]);
+    fclose(fp);
+}
+
 void registerPatient(void) {
     if (patientCount >= MAX_PATIENTS) {
         printf("\nPatient records are full (max %d). Cannot register more.\n", MAX_PATIENTS);
@@ -436,6 +484,9 @@ void registerPatient(void) {
 
     printf("Registered patient %s successfully.\n", patientID[p]);
 
+    appendPatientRecord(p);
+    saveBedStatus();
+
     displayBill(p);
 }
 
@@ -455,7 +506,8 @@ int main(void) {
             case 3: displayAllPatientsPriorityOrder(); break;
             case 4: generateReports(); break;
             case 5:
-                printf("\nGoodbye!\n");
+                saveBedStatus();
+                printf("\nBed status saved. Goodbye!\n");
                 running = 0;
                 break;
         }
