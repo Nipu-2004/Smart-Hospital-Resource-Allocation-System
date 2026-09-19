@@ -2,7 +2,565 @@
 #include <stdlib.h>
 #include <string.h>
 
+
+
+#define NUM_SPECIALTIES 4
+#define NUM_WARDS       4
+#define MAX_BEDS        20
+#define MAX_PATIENTS    100
+#define NAME_LEN        50
+#define ID_LEN          15
+
+
+
+void   initializeSystem(void);
+void   displayMainMenu(void);
+
+void   registerPatient(void);
+double calculateWaitTime(int specIdx);
+double calculateSurcharge(int specIdx, int urgency);
+double calculateWardCost(int wardIdx, int days);
+double calculateDiscount(int age, double grossTotal);
+int    assignBed(int wardIdx);
+
+void   displayBill(int p);
+void   displayBedOccupancy(void);
+void   displayAllPatientsPriorityOrder(void);
+void   generateReports(void);
+
+void   saveBedStatus(void);
+void   loadBedStatus(void);
+void   appendPatientRecord(int p);
+
+int    findSpecialtyIndexByID(int id);
+int    findWardIndexByID(int id);
+void   clearInputBuffer(void);
+void   printCurrency(double amount);
+int    readIntInRange(const char *prompt, int lo, int hi);
+
+
+/*Doctor Specialties*/
+const int    specialtyID[NUM_SPECIALTIES]   = {1, 2, 3, 4};
+const char   specialtyName[NUM_SPECIALTIES][30] = {
+    "General Practice (OPD)", "Paediatrics", "Cardiology", "Neurology"
+};
+const double baseFee[NUM_SPECIALTIES]      = {1500.00, 2500.00, 4500.00, 5000.00};
+const int    consultTime[NUM_SPECIALTIES]  = {15, 20, 30, 30};
+const int    dailyCap[NUM_SPECIALTIES]     = {30, 20, 12, 10};
+
+/*Hospital Wards*/
+const int    wardID[NUM_WARDS]        = {1, 2, 3, 4};
+const char   wardName[NUM_WARDS][30]  = {
+    "General Ward", "Paediatric Ward", "Surgical Ward", "ICU (Intensive Care Unit)"
+};
+const double dailyBedRate[NUM_WARDS]  = {3000.00, 6000.00, 12000.00, 25000.00};
+const int    bedCapacity[NUM_WARDS]   = {20, 10, 10, 5};
+
+/*Bed Occupancy Matrix*/
+int bedOccupancy[NUM_WARDS][MAX_BEDS];
+
+/*Specialty Queue Counters*/
+int queueCount[NUM_SPECIALTIES];
+
+/*Patient Parallel Arrays*/
+char   patientID[MAX_PATIENTS][ID_LEN];
+char   patientName[MAX_PATIENTS][NAME_LEN];
+int    patientAge[MAX_PATIENTS];
+int    urgencyLevel[MAX_PATIENTS];
+int    specialtyIndex[MAX_PATIENTS];
+int    isAdmitted[MAX_PATIENTS];
+int    wardIndex[MAX_PATIENTS];
+int    bedNumber[MAX_PATIENTS];
+int    daysAdmitted[MAX_PATIENTS];
+
+double baseFeeArr[MAX_PATIENTS];
+double surchargeArr[MAX_PATIENTS];
+double wardCostArr[MAX_PATIENTS];
+double grossTotalArr[MAX_PATIENTS];
+double discountArr[MAX_PATIENTS];
+double finalAmountArr[MAX_PATIENTS];
+double waitTimeArr[MAX_PATIENTS];
+
+int patientCount = 0;
+int nextPatientNumber = 1001;
+
+
+
+void clearInputBuffer(void) {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF) {}
+}
+
+int readIntInRange(const char *prompt, int lo, int hi) {
+    int value;
+    while (1) {
+        printf("%s", prompt);
+        if (scanf("%d", &value) == 1) {
+            clearInputBuffer();
+            if (value >= lo && value <= hi) {
+                return value;
+            }
+        } else {
+            clearInputBuffer();
+        }
+        printf("  -> Invalid input. Please enter a value between %d and %d.\n", lo, hi);
+    }
+}
+
+void printCurrency(double amount) {
+    if (amount < 0) {
+        printf("-");
+        amount = -amount;
+    }
+    char buf[40];
+    snprintf(buf, sizeof(buf), "%.2f", amount);
+    char *dot = strchr(buf, '.');
+    int intLen = (int)(dot - buf);
+
+    for (int i = 0; i < intLen; i++) {
+        putchar(buf[i]);
+        int remaining = intLen - i - 1;
+        if (remaining > 0 && remaining % 3 == 0) {
+            putchar(',');
+        }
+    }
+    printf("%s", dot);
+}
+
+int findSpecialtyIndexByID(int id) {
+    for (int i = 0; i < NUM_SPECIALTIES; i++) {
+        if (specialtyID[i] == id) return i;
+    }
+    return -1;
+}
+
+int findWardIndexByID(int id) {
+    for (int i = 0; i < NUM_WARDS; i++) {
+        if (wardID[i] == id) return i;
+    }
+    return -1;
+}
+
+
+
+void initializeSystem(void) {
+    for (int w = 0; w < NUM_WARDS; w++) {
+        for (int b = 0; b < MAX_BEDS; b++) {
+            bedOccupancy[w][b] = 0;
+        }
+    }
+    for (int s = 0; s < NUM_SPECIALTIES; s++) {
+        queueCount[s] = 0;
+    }
+    patientCount = 0;
+    nextPatientNumber = 1001;
+
+    loadBedStatus();
+}
+
+void displayMainMenu(void) {
+    printf("\n============================================================\n");
+    printf("        SMART HOSPITAL & RESOURCE ALLOCATION SYSTEM\n");
+    printf("============================================================\n");
+    printf(" 1. Register New Patient\n");
+    printf(" 2. View Bed Occupancy Matrix\n");
+    printf(" 3. View Patients in Priority (Triage) Order\n");
+    printf(" 4. Generate Performance Reports\n");
+    printf(" 5. Save & Exit\n");
+    printf("------------------------------------------------------------\n");
+}
+
+
+
+double calculateWaitTime(int specIdx) {
+    return queueCount[specIdx] * (double)consultTime[specIdx];
+}
+
+double calculateSurcharge(int specIdx, int urgency) {
+    double base = baseFee[specIdx];
+    switch (urgency) {
+        case 1: return 0.0;
+        case 2: return base * 0.20;
+        case 3: return base * 0.50;
+        default: return 0.0;
+    }
+}
+
+double calculateWardCost(int wardIdx, int days) {
+    if (wardIdx < 0 || days <= 0) return 0.0;
+    return days * dailyBedRate[wardIdx];
+}
+
+double calculateDiscount(int age, double grossTotal) {
+    if (age < 5 || age > 65) {
+        return grossTotal * 0.15;
+    }
+    return 0.0;
+}
+
+int assignBed(int wardIdx) {
+    for (int b = 0; b < bedCapacity[wardIdx]; b++) {
+        if (bedOccupancy[wardIdx][b] == 0) {
+            bedOccupancy[wardIdx][b] = 1;
+            return b + 1;
+        }
+    }
+    return -1;
+}
+
+
+
+void registerPatient(void) {
+    if (patientCount >= MAX_PATIENTS) {
+        printf("\nPatient records are full (max %d). Cannot register more.\n", MAX_PATIENTS);
+        return;
+    }
+
+    int p = patientCount;
+
+    printf("\n------------- New Patient Registration -------------\n");
+
+    printf("Patient Name: ");
+    fgets(patientName[p], NAME_LEN, stdin);
+    patientName[p][strcspn(patientName[p], "\n")] = '\0';
+
+    patientAge[p] = readIntInRange("Patient Age: ", 0, 120);
+
+    urgencyLevel[p] = readIntInRange(
+        "Triage Level (1=Normal, 2=Urgent, 3=Critical): ", 1, 3);
+
+    printf("\nAvailable Specialties:\n");
+    for (int i = 0; i < NUM_SPECIALTIES; i++) {
+        printf("  %d. %-25s (LKR %.2f)\n", specialtyID[i], specialtyName[i], baseFee[i]);
+    }
+    int specId = readIntInRange("Select Specialty ID: ", 1, NUM_SPECIALTIES);
+    int specIdx = findSpecialtyIndexByID(specId);
+    specialtyIndex[p] = specIdx;
+
+    waitTimeArr[p] = calculateWaitTime(specIdx);
+    queueCount[specIdx]++;
+
+    int admitted = readIntInRange("Admit to Ward? (1=Yes, 0=No): ", 0, 1);
+    isAdmitted[p] = admitted;
+
+    int wIdx = -1;
+    int bed = -1;
+    int days = 0;
+
+    if (admitted == 1) {
+        printf("\nAvailable Wards:\n");
+        for (int i = 0; i < NUM_WARDS; i++) {
+            printf("  %d. %-25s (LKR %.2f/day, Capacity %d)\n",
+                   wardID[i], wardName[i], dailyBedRate[i], bedCapacity[i]);
+        }
+        int wardIdInput = readIntInRange("Select Ward ID: ", 1, NUM_WARDS);
+        wIdx = findWardIndexByID(wardIdInput);
+
+        bed = assignBed(wIdx);
+        if (bed == -1) {
+            printf("\n*** Ward '%s' is FULL. Patient will be treated as Outpatient (OPD). ***\n",
+                   wardName[wIdx]);
+            isAdmitted[p] = 0;
+            wIdx = -1;
+            days = 0;
+        } else {
+            days = readIntInRange("Days Admitted: ", 1, 365);
+        }
+    }
+
+    wardIndex[p]    = wIdx;
+    bedNumber[p]    = bed;
+    daysAdmitted[p] = days;
+
+    baseFeeArr[p]   = baseFee[specIdx];
+    surchargeArr[p] = calculateSurcharge(specIdx, urgencyLevel[p]);
+    wardCostArr[p]  = calculateWardCost(wIdx, days);
+    grossTotalArr[p]= baseFeeArr[p] + surchargeArr[p] + wardCostArr[p];
+    discountArr[p]  = calculateDiscount(patientAge[p], grossTotalArr[p]);
+    finalAmountArr[p] = grossTotalArr[p] - discountArr[p];
+
+    snprintf(patientID[p], ID_LEN, "PAT-%d", nextPatientNumber++);
+
+    patientCount++;
+
+    displayBill(p);
+    appendPatientRecord(p);
+    saveBedStatus();
+}
+
+
+
+void displayBill(int p) {
+    int specIdx = specialtyIndex[p];
+    int urgency = urgencyLevel[p];
+    const char *urgencyText =
+        (urgency == 3) ? "Level 3 (Critical)" :
+        (urgency == 2) ? "Level 2 (Urgent)"   : "Level 1 (Normal)";
+
+    printf("\n====================================================\n");
+    printf(" SMART HOSPITAL ADMISSION & BILL\n");
+    printf("----------------------------------------------------------------------------------------\n");
+    printf("Patient ID       : %s\n", patientID[p]);
+    printf("Patient Name     : %s\n", patientName[p]);
+
+    if (patientAge[p] < 5 || patientAge[p] > 65) {
+        printf("Age              : %d Years (15%% Subsidy Eligible)\n", patientAge[p]);
+    } else {
+        printf("Age              : %d Years\n", patientAge[p]);
+    }
+
+    printf("Specialty        : %s\n", specialtyName[specIdx]);
+
+    if (isAdmitted[p]) {
+        printf("Assigned Ward    : %s (Bed #%02d)\n", wardName[wardIndex[p]], bedNumber[p]);
+    } else {
+        printf("Assigned Ward    : Not Admitted (OPD)\n");
+    }
+
+    printf("Urgency Level    : %s\n", urgencyText);
+    printf("----------------------------------------------------------------------------------------\n");
+
+    printf("Base Consultation Fee   : LKR ");
+    printCurrency(baseFeeArr[p]);
+    printf("\n");
+
+    int surchargePct = (urgency == 3) ? 50 : (urgency == 2) ? 20 : 0;
+    printf("Emergency Surcharge     : LKR ");
+    printCurrency(surchargeArr[p]);
+    printf(" (%d%%)\n", surchargePct);
+
+    if (isAdmitted[p]) {
+        printf("Ward Stay Cost (%d Days) : LKR ", daysAdmitted[p]);
+    } else {
+        printf("Ward Stay Cost          : LKR ");
+    }
+    printCurrency(wardCostArr[p]);
+    printf("\n");
+
+    printf("----------------------------------------------------------------------------------------\n");
+    printf("Gross Total Bill        : LKR ");
+    printCurrency(grossTotalArr[p]);
+    printf("\n");
+
+    printf("Age Subsidy Discount    : LKR -");
+    printCurrency(discountArr[p]);
+    printf(" (%s)\n", (discountArr[p] > 0) ? "15%" : "0%");
+
+    printf("----------------------------------------------------------------------------------------\n");
+    printf("Final Payable Amount    : LKR ");
+    printCurrency(finalAmountArr[p]);
+    printf("\n");
+
+    if (waitTimeArr[p] <= 0.0) {
+        printf("Estimated Waiting Time  : 0.00 mins (Immediate Attention)\n");
+    } else {
+        printf("Estimated Waiting Time  : %.2f mins\n", waitTimeArr[p]);
+    }
+    printf("====================================================\n");
+}
+
+
+
+void displayBedOccupancy(void) {
+    printf("\n=================== BED OCCUPANCY MATRIX ===================\n");
+    for (int w = 0; w < NUM_WARDS; w++) {
+        int occupied = 0;
+        printf("\n%s (Capacity %d):\n  ", wardName[w], bedCapacity[w]);
+        for (int b = 0; b < bedCapacity[w]; b++) {
+            printf("[Bed %02d:%s] ", b + 1, bedOccupancy[w][b] ? "OCC" : "AVL");
+            if (bedOccupancy[w][b]) occupied++;
+        }
+        printf("\n  -> %d / %d beds occupied (%.1f%%)\n",
+               occupied, bedCapacity[w], (occupied * 100.0) / bedCapacity[w]);
+    }
+    printf("==============================================================\n");
+}
+
+
+static int comesBefore(int a, int b) {
+    if (urgencyLevel[a] != urgencyLevel[b]) {
+        return urgencyLevel[a] > urgencyLevel[b];
+    }
+    return a < b;
+}
+
+void displayAllPatientsPriorityOrder(void) {
+    if (patientCount == 0) {
+        printf("\nNo patients registered yet.\n");
+        return;
+    }
+
+    int order[MAX_PATIENTS];
+    for (int i = 0; i < patientCount; i++) order[i] = i;
+
+    for (int i = 0; i < patientCount - 1; i++) {
+        int best = i;
+        for (int j = i + 1; j < patientCount; j++) {
+            if (comesBefore(order[j], order[best])) {
+                best = j;
+            }
+        }
+        if (best != i) {
+            int temp = order[i];
+            order[i] = order[best];
+            order[best] = temp;
+        }
+    }
+
+    printf("\n================ PATIENTS IN PRIORITY ORDER ================\n");
+    printf("%-10s %-22s %-6s %-10s %-20s\n", "ID", "Name", "Age", "Urgency", "Specialty");
+    printf("--------------------------------------------------------------\n");
+    for (int i = 0; i < patientCount; i++) {
+        int p = order[i];
+        const char *level = (urgencyLevel[p] == 3) ? "Critical" :
+                             (urgencyLevel[p] == 2) ? "Urgent"   : "Normal";
+        printf("%-10s %-22s %-6d %-10s %-20s\n",
+               patientID[p], patientName[p], patientAge[p], level,
+               specialtyName[specialtyIndex[p]]);
+    }
+    printf("==============================================================\n");
+}
+
+
+
+void generateReports(void) {
+    if (patientCount == 0) {
+        printf("\nNo patients registered yet. Nothing to report.\n");
+        return;
+    }
+
+    int normalCount = 0, urgentCount = 0, criticalCount = 0;
+    double totalRevenue = 0.0, totalDiscount = 0.0;
+    int topPatient = 0;
+
+    for (int p = 0; p < patientCount; p++) {
+        switch (urgencyLevel[p]) {
+            case 1: normalCount++; break;
+            case 2: urgentCount++; break;
+            case 3: criticalCount++; break;
+        }
+        totalRevenue  += finalAmountArr[p];
+        totalDiscount += discountArr[p];
+
+        if (finalAmountArr[p] > finalAmountArr[topPatient]) {
+            topPatient = p;
+        }
+    }
+
+    printf("\n=================== PERFORMANCE REPORT ===================\n");
+    printf("Total Patients Registered : %d\n", patientCount);
+    printf("  - Normal   (Level 1)    : %d\n", normalCount);
+    printf("  - Urgent   (Level 2)    : %d\n", urgentCount);
+    printf("  - Critical (Level 3)    : %d\n", criticalCount);
+
+    printf("\nTotal Revenue Earned      : LKR ");
+    printCurrency(totalRevenue);
+    printf("\nTotal Discounts Granted   : LKR ");
+    printCurrency(totalDiscount);
+    printf("\n\nBed Occupancy Per Ward:\n");
+
+    for (int w = 0; w < NUM_WARDS; w++) {
+        int occupied = 0;
+        for (int b = 0; b < bedCapacity[w]; b++) {
+            if (bedOccupancy[w][b]) occupied++;
+        }
+        printf("  - %-25s : %d/%d beds (%.1f%%)\n",
+               wardName[w], occupied, bedCapacity[w],
+               (occupied * 100.0) / bedCapacity[w]);
+    }
+
+    printf("\nHighest-Paying Patient    : %s (%s) - LKR ",
+           patientName[topPatient], patientID[topPatient]);
+    printCurrency(finalAmountArr[topPatient]);
+    printf("\n============================================================\n");
+}
+
+
+
+void saveBedStatus(void) {
+    FILE *fp = fopen("beds_status.txt", "w");
+    if (fp == NULL) {
+        printf("Warning: could not save beds_status.txt\n");
+        return;
+    }
+    for (int w = 0; w < NUM_WARDS; w++) {
+        for (int b = 0; b < MAX_BEDS; b++) {
+            fprintf(fp, "%d ", bedOccupancy[w][b]);
+        }
+        fprintf(fp, "\n");
+    }
+    fclose(fp);
+}
+
+void loadBedStatus(void) {
+    FILE *fp = fopen("beds_status.txt", "r");
+    if (fp == NULL) {
+        return;
+    }
+    for (int w = 0; w < NUM_WARDS; w++) {
+        for (int b = 0; b < MAX_BEDS; b++) {
+            if (fscanf(fp, "%d", &bedOccupancy[w][b]) != 1) {
+                bedOccupancy[w][b] = 0;
+            }
+        }
+    }
+    fclose(fp);
+}
+
+void appendPatientRecord(int p) {
+    FILE *fp = fopen("patient_records.txt", "a");
+    if (fp == NULL) {
+        printf("Warning: could not write to patient_records.txt\n");
+        return;
+    }
+    fprintf(fp,
+        "%s | %s | Age:%d | Urgency:%d | Specialty:%s | Admitted:%s | Ward:%s | Days:%d | Final:%.2f\n",
+        patientID[p],
+        patientName[p],
+        patientAge[p],
+        urgencyLevel[p],
+        specialtyName[specialtyIndex[p]],
+        isAdmitted[p] ? "Yes" : "No",
+        isAdmitted[p] ? wardName[wardIndex[p]] : "N/A",
+        daysAdmitted[p],
+        finalAmountArr[p]);
+    fclose(fp);
+}
+
+
+
 int main(void) {
+    initializeSystem();
+
+    int choice;
+    int running = 1;
+
     printf("Welcome to the Smart Hospital & Resource Allocation System\n");
+
+    while (running) {
+        displayMainMenu();
+        choice = readIntInRange("Enter your choice (1-5): ", 1, 5);
+
+        switch (choice) {
+            case 1:
+                registerPatient();
+                break;
+            case 2:
+                displayBedOccupancy();
+                break;
+            case 3:
+                displayAllPatientsPriorityOrder();
+                break;
+            case 4:
+                generateReports();
+                break;
+            case 5:
+                saveBedStatus();
+                printf("\nBed status saved. Goodbye!\n");
+                running = 0;
+                break;
+        }
+    }
+
     return 0;
 }
